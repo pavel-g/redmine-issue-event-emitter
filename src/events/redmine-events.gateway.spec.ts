@@ -1,15 +1,15 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { IssueChangeGateway } from './issue-change.gateway';
+import { RedmineEventsGateway } from './redmine-events.gateway';
 
-describe('IssueChangeGateway', () => {
-  let gateway: IssueChangeGateway;
+describe('RedmineEventsGateway', () => {
+  let gateway: RedmineEventsGateway;
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
-      providers: [IssueChangeGateway],
+      providers: [RedmineEventsGateway],
     }).compile();
 
-    gateway = module.get<IssueChangeGateway>(IssueChangeGateway);
+    gateway = module.get<RedmineEventsGateway>(RedmineEventsGateway);
   });
 
   it('should be defined', () => {

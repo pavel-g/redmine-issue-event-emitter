@@ -2,18 +2,24 @@
   <head>
     <script src="socket.io.js"></script>
     <script>
-      const socket = io('http://localhost:3000/');
+      console.log('start ...');
+      const socket = io('http://localhost:3000/redmine-events');
+      console.log('subscribe on connect event...');
       socket.on('connect', function() {
         console.log('Connected');
 
         socket.emit('events', { test: 'test' });
-        socket.emit('identity', 0, response =>
+        socket.emit('issues-changes', 0, response =>
           console.log('Identity:', response),
         );
       });
       socket.on('events', function(data) {
         console.log('event', data);
       });
+      console.log('subscribe on issues-changes event...');
+      socket.on('issues-changes', function(issueNumber) {
+        console.log('Issues changed:', issueNumber);
+      })
       socket.on('exception', function(data) {
         console.log('event', data);
       });

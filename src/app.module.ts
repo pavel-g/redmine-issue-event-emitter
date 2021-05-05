@@ -1,12 +1,15 @@
 import { Module } from '@nestjs/common';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
-import { DataLoaderService } from './data-loader/data-loader.service';
-import { IssueChangeGateway } from './events/issue-change.gateway';
+import { RedmineEventsGateway } from './events/redmine-events.gateway';
+import { ServeStaticModule } from '@nestjs/serve-static';
+import { join } from 'path';
 
 @Module({
-  imports: [],
+  imports: [
+    ServeStaticModule.forRoot({rootPath: join(__dirname, '..', 'client')})
+  ],
   controllers: [AppController],
-  providers: [AppService, DataLoaderService, IssueChangeGateway],
+  providers: [AppService, RedmineEventsGateway],
 })
 export class AppModule {}
