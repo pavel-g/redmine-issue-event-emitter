@@ -1,30 +1,24 @@
 import { BehaviorSubject } from "rxjs";
 import * as ImapSimple from "imap-simple";
+import { Injectable } from "@nestjs/common";
+import { ConfigService } from "@nestjs/config";
 
+@Injectable()
 export class MailListener {
 
-  // TODO: 2021-05-08 Вынести в конфиг параметры доступа к почте
-  config = {
-    imap: {
-      user: 'pavel.gnedov',
-      password: 'FiH925p$',
-      host: 'mail.eltex.loc',
-      port: 143,
-      // tls: true,
-      autotls: 'always',
-      authTimeout: 5000
-    }
-  };
-
-  // TODO: 2021-05-08 Вынести в конфиг параметр
-  updateInterval: number = 10 * 1000; // 30sec
-
-  // TODO: 2021-05-08 Вынести в конфиг параметр
-  boxName = 'INBOX.Redmine';
+  config: any;
+  updateInterval: number;
+  boxName: string;
 
   messagesSubject = new BehaviorSubject<string[]>([])
 
   private updateTimeout;
+
+  constructor(private configService: ConfigService) {
+    this.config = this.configService.get<any>('imapSimpleConfig')
+    this.updateInterval = this.configService.get<number>('mailListener.updateInterval');
+    this.boxName = this.configService.get<string>('mailListener.boxName')
+  }
 
   start(): void {
     this.updateMessages();

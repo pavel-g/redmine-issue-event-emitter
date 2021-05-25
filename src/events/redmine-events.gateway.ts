@@ -8,6 +8,12 @@ import { Queue } from "../queue/queue";
 import { RedmineDataLoader } from "../redmine-data-loader/redmine-data-loader";
 import { RedmineIssueData } from "../models/RedmineIssueData";
 import { fromPromise } from "rxjs/internal-compatibility";
+import { ConfigService } from "@nestjs/config";
+
+type IssuesChangesQueueParams = {
+  updateInterval: number,
+  itemsLimit: number
+}
 
 @WebSocketGateway({namespace: 'redmine-events'})
 export class RedmineEventsGateway {
@@ -16,12 +22,18 @@ export class RedmineEventsGateway {
 
   issuesChangesObservable: Observable<WsResponse<number[]>>;
   issuesFullChangesObservable: Observable<WsResponse<RedmineIssueData[]>>;
-  mailListener: MailListener | null = null;
 
-  private issueNumberParser = /\b\d+\b/; // TODO: 2021-05-08 Перенести параметр в конфиг
+  private issueNumberParser: RegExp;
+  private issuesChangesQueueParams: IssuesChangesQueueParams
 
-  constructor() {
-    this.getMailListener().messagesSubject.pipe(
+  constructor(
+    private config: ConfigService,
+    private redmineDataLoader: RedmineDataLoader,
+    private mailListener: MailListener
+  ) {
+    this.issueNumberParser = new RegExp(this.config.get<string>("issueNumberParser"))
+    this.issuesChangesQueueParams = this.config.get<IssuesChangesQueueParams>("issueChangesQueue")
+    this.mailListener.messagesSubject.pipe(
       map(subjects => {
         return subjects.map(subject => {
           return this.getSubjectsParser().getIssueNumber(subject)
@@ -38,7 +50,7 @@ export class RedmineEventsGateway {
 
     this.issuesFullChangesObservable = this.getIssuesChangesQueue().queue.pipe(
       switchMap((issues) => {
-        const promise: Promise<RedmineIssueData[]> = this.getRedmineDataLoader().loadIssues(issues)
+        const promise: Promise<RedmineIssueData[]> = this.redmineDataLoader.loadIssues(issues)
           .catch((error) => {
             console.error(error);
             this.getIssuesChangesQueue().add(issues);
@@ -54,14 +66,7 @@ export class RedmineEventsGateway {
 
     this.getIssuesChangesQueue().start();
 
-    this.getMailListener().start();
-  }
-
-  getMailListener(): MailListener {
-    if (!this.mailListener) {
-      this.mailListener = new MailListener();
-    }
-    return this.mailListener;
+    this.mailListener.start();
   }
 
   @SubscribeMessage('issues-changes')
@@ -85,16 +90,11 @@ export class RedmineEventsGateway {
   private issuesChangesQueue: Queue<number>;
   getIssuesChangesQueue(): Queue<number> {
     if (!this.issuesChangesQueue) {
-      this.issuesChangesQueue = new Queue<number>(5 * 1000, 3); // TODO: 2021-05-14 Перенести параметры в конфиг
+      this.issuesChangesQueue = new Queue<number>(
+        this.issuesChangesQueueParams.updateInterval,
+        this.issuesChangesQueueParams.itemsLimit
+      );
     }
     return this.issuesChangesQueue;
-  }
-
-  private redmineDataLoader: RedmineDataLoader;
-  getRedmineDataLoader(): RedmineDataLoader {
-    if (!this.redmineDataLoader) {
-      this.redmineDataLoader = new RedmineDataLoader();
-    }
-    return this.redmineDataLoader;
   }
 }

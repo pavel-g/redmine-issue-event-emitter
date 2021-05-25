@@ -1,10 +1,16 @@
 import axios from "axios";
 import { RedmineIssueData } from "../models/RedmineIssueData";
+import { Injectable } from "@nestjs/common";
+import { ConfigService } from "@nestjs/config";
 
+@Injectable()
 export class RedmineDataLoader {
 
-  // TODO: 2021-05-16 Перенести параметр в конфиг
-  urlPrefix = "http://pavel.gnedov:FiH925p$@red.eltex.loc"
+  urlPrefix: string;
+
+  constructor(private configService: ConfigService) {
+    this.urlPrefix = this.configService.get<string>('redmineUrlPrefix');
+  }
 
   async loadIssues(issues: number[]): Promise<RedmineIssueData[]> {
     const promises = issues.map(issue => this.loadIssue(issue));

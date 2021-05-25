@@ -1,0 +1,23 @@
+{
+  "imapSimpleConfig": {
+    "imap": {
+      "user": "",
+      "password": "",
+      "host": "",
+      "port": 143,
+      // tls: true,
+      "autotls": "always",
+      "authTimeout": 5000
+    }
+  },
+  "issueNumberParser": "\\b\\d+\\b",
+  "issueChangesQueue": {
+    "updateInterval": 5000, // 5 sec
+    "itemsLimit": 3
+  },
+  "mailListener": {
+    "updateInterval": 180000, // 3 min
+    "boxName": "INBOX"
+  },
+  "redmineUrlPrefix": ""
+}
