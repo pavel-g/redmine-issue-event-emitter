@@ -9,6 +9,8 @@ import { RedmineDataLoader } from "../redmine-data-loader/redmine-data-loader";
 import { RedmineIssueData } from "../models/RedmineIssueData";
 import { fromPromise } from "rxjs/internal-compatibility";
 import { ConfigService } from "@nestjs/config";
+import axios from "axios";
+import { WebhookConfigItemModel } from "../models/webhook-config-item-model";
 
 type IssuesChangesQueueParams = {
   updateInterval: number,
@@ -44,6 +46,7 @@ export class RedmineEventsGateway {
     });
 
     this.issuesChangesObservable = this.getIssuesChangesQueue().queue.pipe(map(issueNumbers => {
+      this.sendWebHookIssueNumbersEvents(issueNumbers);
       return {event: 'issues-changes', data: issueNumbers};
     }));
     this.issuesChangesObservable.subscribe((data) => console.debug('Issue numbers:', data));
@@ -59,6 +62,7 @@ export class RedmineEventsGateway {
         return fromPromise(promise) as Observable<RedmineIssueData[]>
       }),
       map((issuesData: RedmineIssueData[]) => {
+        this.sendWebHookFullDataEvents(issuesData);
         return {event: 'issues-full-changes', data: issuesData}
       })
     );
@@ -96,5 +100,33 @@ export class RedmineEventsGateway {
       );
     }
     return this.issuesChangesQueue;
+  }
+
+  addIssues(issues: number[]): void {
+    this.issuesChangesQueue.add(issues);
+  }
+
+  private sendWebHookIssueNumbersEvents(data: number[]): void {
+    const webhooks = this.config.get<WebhookConfigItemModel[]>("webhooks");
+    webhooks.filter(webhook => webhook.fullData === false).forEach(webhook => {
+      let config = undefined;
+      if (webhook.apiKeyName && webhook.apiKeyValue) {
+        config = {headers: {}};
+        config.headers[webhook.apiKeyName] = webhook.apiKeyValue;
+      }
+      axios.post<any>(webhook.url, data, config);
+    });
+  }
+
+  private sendWebHookFullDataEvents(data: RedmineIssueData[]): void {
+    const webhooks = this.config.get<WebhookConfigItemModel[]>("webhooks");
+    webhooks.filter(webhook => webhook.fullData === true).forEach(webhook => {
+      let config = undefined;
+      if (webhook.apiKeyName && webhook.apiKeyValue) {
+        config = {headers: {}};
+        config.headers[webhook.apiKeyName] = webhook.apiKeyValue;
+      }
+      axios.post(webhook.url, data, config);
+    });
   }
 }
