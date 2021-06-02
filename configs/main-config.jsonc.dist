@@ -19,5 +19,13 @@
     "updateInterval": 180000, // 3 min
     "boxName": "INBOX"
   },
-  "redmineUrlPrefix": ""
+  "redmineUrlPrefix": "",
+  "webhooks": [
+    {
+      "url": "",
+      "apiKeyName": "",
+      "apiKeyValue": "",
+      "fullData": false
+    }
+  ]
 }

@@ -1,3 +1,5 @@
+import { WebhookConfigItemModel } from "./webhook-config-item-model";
+
 export type MainConfigModel = {
   imapSimpleConfig: any,
   issueNumberParser: string,
@@ -9,5 +11,6 @@ export type MainConfigModel = {
     updateInterval: number,
     boxName: string
   },
-  redmineUrlPrefix: string
+  redmineUrlPrefix: string,
+  webhooks: WebhookConfigItemModel[]
 }
