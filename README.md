@@ -45,6 +45,19 @@ $ npm run start:dev
 $ npm run start:prod
 ```
 
+## Build and run docker image
+
+```bash
+npm run build-docker
+# npm run build
+# docker build -t redmine-issue-event-emitter .
+docker run -v /full/path/configs:/app/configs -p 3000:3000 redmine-issue-event-emitter:latest
+```
+
+```bash
+docker run -v /full/path/configs:/app/configs -p 3000:3000 --add-host=mail.corp.loc:172.16.0.1 redmine-issue-event-emitter:latest
+```
+
 ## Test
 
 ```bash
