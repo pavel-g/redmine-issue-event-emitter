@@ -34,3 +34,4 @@ lerna-debug.log*
 !.vscode/extensions.json
 
 /configs/main-config.jsonc
+/docker-compose.local.yml

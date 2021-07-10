@@ -1,0 +1,9 @@
+version: '3.9'
+
+services:
+  redmine-issue-event-emitter:
+    image: 'redmine-issue-event-emitter'
+    volumes:
+      - ./configs:/app/configs
+    ports:
+      - '3000:3000'
