@@ -1,16 +1,14 @@
 import { WebhookConfigItemModel } from "./webhook-config-item-model";
+import { RssListenerParams } from "../rsslistener/rsslistener-params";
+import { MailListenerParams } from "../maillistener/maillistener-params";
 
 export type MainConfigModel = {
-  imapSimpleConfig: any,
-  issueNumberParser: string,
   issueChangesQueue: {
     updateInterval: number,
     itemsLimit: number
   },
-  mailListener: {
-    updateInterval: number,
-    boxName: string
-  },
+  mailListener: MailListenerParams | null,
+  rssListener: RssListenerParams | null,
   redmineUrlPrefix: string,
   webhooks: WebhookConfigItemModel[]
 }

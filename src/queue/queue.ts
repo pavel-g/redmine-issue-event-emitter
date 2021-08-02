@@ -1,12 +1,16 @@
 import { Subject } from "rxjs";
 
-export class Queue<T> {
+export class Queue<T, NT> {
 
   private items: T[] = [];
 
-  queue: Subject<T[]> = new Subject<T[]>();
+  queue: Subject<NT[]> = new Subject<NT[]>();
 
-  constructor(private updateInterval: number, private itemsLimit: number) {}
+  constructor(
+    private updateInterval: number,
+    private itemsLimit: number,
+    private transformationFn: ((arg: Array<T>) => Promise<Array<NT>>)
+  ) {}
 
   add(values: T[]): void {
     this.items.push(...values);
@@ -23,10 +27,11 @@ export class Queue<T> {
 
   private updateTimeout;
 
-  private update(): void {
+  private async update(): Promise<void> {
     if (this.items.length > 0) {
       const items = this.items.splice(0, this.itemsLimit);
-      this.queue.next(items)
+      const transformedItems = await this.transformationFn(items);
+      this.queue.next(transformedItems);
     }
     this.updateTimeout = setTimeout(() => {
       this.update();

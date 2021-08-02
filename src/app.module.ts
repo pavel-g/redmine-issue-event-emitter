@@ -6,7 +6,6 @@ import { ServeStaticModule } from '@nestjs/serve-static';
 import { join } from 'path';
 import MainConfig from './configs/main-config';
 import { ConfigModule } from '@nestjs/config';
-import { MailListener } from './maillistener/maillistener';
 import { RedmineDataLoader } from './redmine-data-loader/redmine-data-loader';
 
 @Module({
@@ -15,6 +14,6 @@ import { RedmineDataLoader } from './redmine-data-loader/redmine-data-loader';
     ConfigModule.forRoot({load: [MainConfig]})
   ],
   controllers: [AppController],
-  providers: [AppService, RedmineEventsGateway, MailListener, RedmineDataLoader],
+  providers: [AppService, RedmineEventsGateway, RedmineDataLoader],
 })
 export class AppModule {}

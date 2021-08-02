@@ -7,15 +7,10 @@
       socket.on('connect', function() {
         console.log('Connected');
         socket.emit('issues-changes', { test: 'test' });
-        socket.emit('issues-full-changes', { test: 'test' });
       });
 
       socket.on('issues-changes', function(issues) {
         console.log('Issues changed:', issues);
-      });
-
-      socket.on('issues-full-changes', function(issuesData) {
-        console.log('Issues data:', issuesData);
       });
 
       socket.on('exception', function(data) {

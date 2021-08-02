@@ -1,16 +1,16 @@
 import { MessageBody, SubscribeMessage, WebSocketGateway, WebSocketServer, WsResponse } from "@nestjs/websockets";
 import { Server } from "socket.io";
 import { Observable } from "rxjs";
-import { map, switchMap } from "rxjs/operators";
+import { map } from "rxjs/operators";
 import { MailListener } from "../maillistener/maillistener";
-import { CreateSubjectsParserByRegExp, SubjectsParser } from "../subjects-parser/subjects-parser";
 import { Queue } from "../queue/queue";
 import { RedmineDataLoader } from "../redmine-data-loader/redmine-data-loader";
 import { RedmineIssueData } from "../models/RedmineIssueData";
-import { fromPromise } from "rxjs/internal-compatibility";
 import { ConfigService } from "@nestjs/config";
 import axios from "axios";
 import { WebhookConfigItemModel } from "../models/webhook-config-item-model";
+import { RssListener } from "../rsslistener/rsslistener";
+import { EventsListener } from "./events-listener";
 
 type IssuesChangesQueueParams = {
   updateInterval: number,
@@ -22,82 +22,42 @@ export class RedmineEventsGateway {
   @WebSocketServer()
   server: Server;
 
-  issuesChangesObservable: Observable<WsResponse<number[]>>;
-  issuesFullChangesObservable: Observable<WsResponse<RedmineIssueData[]>>;
+  issuesChangesObservable: Observable<WsResponse<RedmineIssueData[]>>;
 
   private issueNumberParser: RegExp;
   private issuesChangesQueueParams: IssuesChangesQueueParams
 
   constructor(
     private config: ConfigService,
-    private redmineDataLoader: RedmineDataLoader,
-    private mailListener: MailListener
+    private redmineDataLoader: RedmineDataLoader
   ) {
-    this.issueNumberParser = new RegExp(this.config.get<string>("issueNumberParser"))
     this.issuesChangesQueueParams = this.config.get<IssuesChangesQueueParams>("issueChangesQueue")
-    this.mailListener.messagesSubject.pipe(
-      map(subjects => {
-        return subjects.map(subject => {
-          return this.getSubjectsParser().getIssueNumber(subject)
-        })
-      })
-    ).subscribe((issueNumbers) => {
-      this.getIssuesChangesQueue().add(issueNumbers);
-    });
-
-    this.issuesChangesObservable = this.getIssuesChangesQueue().queue.pipe(map(issueNumbers => {
-      this.sendWebHookIssueNumbersEvents(issueNumbers);
-      return {event: 'issues-changes', data: issueNumbers};
-    }));
-    this.issuesChangesObservable.subscribe((data) => console.debug('Issue numbers:', data));
-
-    this.issuesFullChangesObservable = this.getIssuesChangesQueue().queue.pipe(
-      switchMap((issues) => {
-        const promise: Promise<RedmineIssueData[]> = this.redmineDataLoader.loadIssues(issues)
-          .catch((error) => {
-            console.error(error);
-            this.getIssuesChangesQueue().add(issues);
-            return [];
-          });
-        return fromPromise(promise) as Observable<RedmineIssueData[]>
-      }),
-      map((issuesData: RedmineIssueData[]) => {
-        this.sendWebHookFullDataEvents(issuesData);
-        return {event: 'issues-full-changes', data: issuesData}
-      })
-    );
-    this.issuesFullChangesObservable.subscribe((data) => console.debug('Issues data:', data));
-
-    this.getIssuesChangesQueue().start();
-
-    this.mailListener.start();
+    this.initRedmineEventsGateway();
   }
 
   @SubscribeMessage('issues-changes')
-  issuesChanges(@MessageBody() data: any): Observable<WsResponse<number[]>> {
+  issuesChanges(@MessageBody() data: any): Observable<WsResponse<RedmineIssueData[]>> {
     return this.issuesChangesObservable;
   }
 
-  @SubscribeMessage('issues-full-changes')
-  issuesFullChanges(@MessageBody() data: any): Observable<WsResponse<RedmineIssueData[]>> {
-    return this.issuesFullChangesObservable;
-  }
-
-  private subjectsParser: SubjectsParser;
-  getSubjectsParser(): SubjectsParser {
-    if (!this.subjectsParser) {
-      this.subjectsParser = CreateSubjectsParserByRegExp(this.issueNumberParser);
-    }
-    return this.subjectsParser;
-  }
-
-  private issuesChangesQueue: Queue<number>;
-  getIssuesChangesQueue(): Queue<number> {
+  private issuesChangesQueue: Queue<number, RedmineIssueData>;
+  getIssuesChangesQueue(): Queue<number, RedmineIssueData> {
     if (!this.issuesChangesQueue) {
-      this.issuesChangesQueue = new Queue<number>(
+      this.issuesChangesQueue = new Queue<number, RedmineIssueData>(
         this.issuesChangesQueueParams.updateInterval,
-        this.issuesChangesQueueParams.itemsLimit
+        this.issuesChangesQueueParams.itemsLimit,
+        async (issueNumbers) => {
+          let res;
+          try {
+            res = await this.redmineDataLoader.loadIssues(issueNumbers);
+          } catch (e) {
+            console.error('Error load issues:', e, 'for issues:', issueNumbers);
+            return [];
+          }
+          return res;
+        }
       );
+      this.issuesChangesQueue.start();
     }
     return this.issuesChangesQueue;
   }
@@ -106,27 +66,91 @@ export class RedmineEventsGateway {
     this.issuesChangesQueue.add(issues);
   }
 
-  private sendWebHookIssueNumbersEvents(data: number[]): void {
+  private sendWebHookFullDataEvents(data: RedmineIssueData[]): void {
     const webhooks = this.config.get<WebhookConfigItemModel[]>("webhooks");
-    webhooks.filter(webhook => webhook.fullData === false).forEach(webhook => {
+    webhooks.forEach(webhook => {
       let config = undefined;
       if (webhook.apiKeyName && webhook.apiKeyValue) {
         config = {headers: {}};
         config.headers[webhook.apiKeyName] = webhook.apiKeyValue;
       }
-      axios.post<any>(webhook.url, data, config);
+      axios.post(webhook.url, data, config).catch((err) => {
+        console.error('Error at webhook send request:', err)
+      });
     });
   }
 
-  private sendWebHookFullDataEvents(data: RedmineIssueData[]): void {
-    const webhooks = this.config.get<WebhookConfigItemModel[]>("webhooks");
-    webhooks.filter(webhook => webhook.fullData === true).forEach(webhook => {
-      let config = undefined;
-      if (webhook.apiKeyName && webhook.apiKeyValue) {
-        config = {headers: {}};
-        config.headers[webhook.apiKeyName] = webhook.apiKeyValue;
+  private mailListener: MailListener|null|undefined;
+  private getMailListener(): MailListener|null {
+    if (typeof this.mailListener === 'undefined') {
+      const mailListenerParams = this.config.get<any>('mailListener');
+      if (mailListenerParams) {
+        this.mailListener = new MailListener(mailListenerParams);
+      } else {
+        this.mailListener = null;
       }
-      axios.post(webhook.url, data, config);
+    }
+    return this.mailListener;
+  }
+
+  private rssListener: RssListener|null|undefined;
+  private getRssListener(): RssListener|null {
+    if (typeof this.rssListener === 'undefined') {
+      const rssListenerParams = this.config.get<any>('rssListener');
+      if (rssListenerParams) {
+        this.rssListener = new RssListener(rssListenerParams);
+      } else {
+        this.rssListener = null;
+      }
+    }
+    return this.rssListener;
+  }
+
+  private listener: EventsListener|null|undefined;
+  private getMainListener(): EventsListener|null {
+    if (typeof this.listener !== 'undefined') {
+      return this.listener;
+    }
+
+    const mailListener = this.getMailListener();
+    const rssListener = this.getRssListener();
+    if (mailListener) {
+      this.listener = mailListener;
+    } else if (rssListener) {
+      this.listener = rssListener;
+    } else {
+      this.listener = null;
+    }
+    if (this.listener) {
+      this.listener.start();
+    }
+    return this.listener;
+  }
+
+  private initWebSocketsSendData(): void {
+    const queue: Queue<number, RedmineIssueData> = this.getIssuesChangesQueue();
+    this.issuesChangesObservable = queue.queue.pipe(map(data => {
+      return {event: 'issues-changes', data: data}
+    }));
+  }
+
+  private initWebHooksSendData(): void {
+    const queue: Queue<number, RedmineIssueData> = this.getIssuesChangesQueue();
+    queue.queue.pipe(map(data => this.sendWebHookFullDataEvents(data)));
+  }
+
+  private initRedmineEventsGateway(): boolean {
+    const listener = this.getMainListener();
+    if (!listener) {
+      console.error('Listener not created');
+      return false;
+    }
+    const issuesChangesQueue = this.getIssuesChangesQueue();
+    listener.issues.subscribe(issues => {
+      issuesChangesQueue.add(issues);
     });
+    this.initWebSocketsSendData();
+    this.initWebHooksSendData();
+    return true;
   }
 }

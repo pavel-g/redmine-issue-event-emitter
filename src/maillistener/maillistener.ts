@@ -1,24 +1,18 @@
 import { BehaviorSubject } from "rxjs";
 import * as ImapSimple from "imap-simple";
 import { Injectable } from "@nestjs/common";
-import { ConfigService } from "@nestjs/config";
+import { MailListenerParams } from "./maillistener-params";
+import { CreateSubjectsParserByRegExp } from "../subjects-parser/subjects-parser";
+import { EventsListener } from "../events/events-listener";
 
 @Injectable()
-export class MailListener {
+export class MailListener implements EventsListener {
 
-  config: any;
-  updateInterval: number;
-  boxName: string;
-
-  messagesSubject = new BehaviorSubject<string[]>([])
+  issues = new BehaviorSubject<number[]>([])
 
   private updateTimeout;
 
-  constructor(private configService: ConfigService) {
-    this.config = this.configService.get<any>('imapSimpleConfig')
-    this.updateInterval = this.configService.get<number>('mailListener.updateInterval');
-    this.boxName = this.configService.get<string>('mailListener.boxName')
-  }
+  constructor(private config: MailListenerParams | null = null) {}
 
   start(): void {
     this.updateMessages();
@@ -30,6 +24,10 @@ export class MailListener {
   }
 
   private async updateMessages(): Promise<void> {
+    if (!this.config) {
+      console.error('Mail listener config not defined');
+      return;
+    }
     const connection = await this.getConnection();
     const searchCriteria = [
       'UNSEEN'
@@ -38,24 +36,29 @@ export class MailListener {
       bodies: ['HEADER', 'TEXT'],
       markSeen: true
     };
-    const boxes = await connection.getBoxes();
-    await connection.openBox(this.boxName)
+    // const boxes = await connection.getBoxes();
+    await connection.openBox(this.config.boxName)
     const messages = await connection.search(searchCriteria, fetchOptions)
     const subjects: string[] = messages.map(message => {
       return message.parts.filter(function (part) {
         return part.which === 'HEADER';
       })[0].body.subject[0]
-    })
-    this.messagesSubject.next(subjects)
+    });
+    const regexp = new RegExp(this.config.issueNumberParser);
+    const subjectParser = CreateSubjectsParserByRegExp(regexp);
+    const numbers: number[] = subjects.map(subject => {
+      return subjectParser.getIssueNumber(subject);
+    });
+    this.issues.next(numbers);
     this.updateTimeout = setTimeout(() => {
-      this.updateMessages()
-    }, this.updateInterval)
+      this.updateMessages();
+    }, this.config.updateInterval);
   }
 
   private connection: ImapSimple.ImapSimple;
   async getConnection(): Promise<ImapSimple.ImapSimple> {
     if (!this.connection) {
-      this.connection = await ImapSimple.connect(this.config);
+      this.connection = await ImapSimple.connect(this.config.imapSimpleConfig as any);
     }
     return this.connection;
   }

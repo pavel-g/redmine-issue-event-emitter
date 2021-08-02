@@ -1,31 +1,39 @@
 {
-  "imapSimpleConfig": {
-    "imap": {
-      "user": "",
-      "password": "",
-      "host": "",
-      "port": 143,
-      // tls: true,
-      "autotls": "always",
-      "authTimeout": 5000
-    }
+  "mailListener": {
+    "issueNumberParser": "\\b(?<=#)\\d+\\b",
+    "imapSimpleConfig": {
+      "imap": {
+        "user": "",
+        "password": "",
+        "host": "",
+        "port": 143,
+        // tls: true,
+        "autotls": "always",
+        "authTimeout": 5000
+      }
+    },
+    "updateInterval": 180000, // 3 min
+    "boxName": "INBOX"
   },
-  "issueNumberParser": "\\b\\d+\\b",
+  "rssListener": {
+    "subscriptions": [
+      {
+        "url": "",
+        "issueNumberParser": "\\b(?<=#)\\d+\\b"
+      }
+    ],
+    "updateInterval": 600000, // 10 min
+  },
   "issueChangesQueue": {
     "updateInterval": 5000, // 5 sec
     "itemsLimit": 3
-  },
-  "mailListener": {
-    "updateInterval": 180000, // 3 min
-    "boxName": "INBOX"
   },
   "redmineUrlPrefix": "",
   "webhooks": [
     {
       "url": "",
       "apiKeyName": "",
-      "apiKeyValue": "",
-      "fullData": false
+      "apiKeyValue": ""
     }
   ]
 }
