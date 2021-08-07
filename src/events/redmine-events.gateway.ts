@@ -136,7 +136,7 @@ export class RedmineEventsGateway {
 
   private initWebHooksSendData(): void {
     const queue: Queue<number, RedmineIssueData> = this.getIssuesChangesQueue();
-    queue.queue.pipe(map(data => this.sendWebHookFullDataEvents(data)));
+    queue.queue.subscribe(data => this.sendWebHookFullDataEvents(data));
   }
 
   private initRedmineEventsGateway(): boolean {
