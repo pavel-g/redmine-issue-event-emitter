@@ -51,11 +51,11 @@ $ npm run start:prod
 npm run build-docker
 # npm run build
 # docker build -t redmine-issue-event-emitter .
-docker run -v /full/path/configs:/app/configs -p 3000:3000 redmine-issue-event-emitter:latest
+docker run -v /full/path/configs:/app/configs -p 3000:3000 --name redmine-issue-event-emitter redmine-issue-event-emitter:latest
 ```
 
 ```bash
-docker run -v /full/path/configs:/app/configs -p 3000:3000 --add-host=mail.corp.loc:172.16.0.1 redmine-issue-event-emitter:latest
+docker run -v /full/path/configs:/app/configs -p 3000:3000  --name redmine-issue-event-emitter --add-host=mail.corp.loc:172.16.0.1 redmine-issue-event-emitter:latest
 ```
 
 ## Test
