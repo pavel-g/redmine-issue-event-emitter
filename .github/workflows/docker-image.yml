@@ -31,6 +31,9 @@ jobs:
           REGISTRY: ${{ env.REGISTRY }}
           IMAGE_NAME: ${{ github.repository }}
         run: |
+          echo REGISTRY: ${REGISTRY}
+          echo GH_REGISTRY_USERNAME: ${GH_REGISTRY_USERNAME}
+          echo IMAGE_NAME: ${IMAGE_NAME}
           echo ${GH_REGISTRY_TOKEN} | docker login ${REGISTRY} -u ${GH_REGISTRY_USERNAME} --password-stdin
           docker build --push \
             -t ${REGISTRY}/${GH_REGISTRY_USERNAME}/${IMAGE_NAME}:latest .
