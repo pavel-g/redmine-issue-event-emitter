@@ -43,4 +43,4 @@ jobs:
             --build-arg CREATED="${now}" --build-arg REVISION=${revision}  --build-arg REF_NAME=${ref_name} \
             -t ${REGISTRY}/${IMAGE_NAME}:latest .
           echo "Push image..."
-          docker push ${REGISTRY}/${IMAGE_NAME}:latest:latest
+          docker push ${REGISTRY}/${IMAGE_NAME}:latest
