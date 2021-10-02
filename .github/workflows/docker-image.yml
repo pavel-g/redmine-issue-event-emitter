@@ -39,6 +39,6 @@ jobs:
           revision=${GITHUB_SHA:0:7}
           ref_name=${GITHUB_REF#refs/*/}
           docker build \
-            --build-arg CREATED="${now}" --build-arg REVISION=${revision}  --build-arg REF_NAME=${ref_name}
+            --build-arg CREATED="${now}" --build-arg REVISION=${revision}  --build-arg REF_NAME=${ref_name} \
             -t ${REGISTRY}/${IMAGE_NAME}:latest .
           docker push ${REGISTRY}/${IMAGE_NAME}:latest:latest
