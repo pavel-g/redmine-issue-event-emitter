@@ -27,7 +27,7 @@ jobs:
       - name: Build and push Docker image
         env:
           GH_REGISTRY_USERNAME: ${{ github.actor }}
-          GH_REGISTRY_TOKEN: ${{ secrets.GH_REGISTRY_TOKEN }}
+          GH_REGISTRY_TOKEN: ${{ secrets.PUBLISH_TOKEN }}
           REGISTRY: ${{ env.REGISTRY }}
           IMAGE_NAME: ${{ github.repository }}
         run: |
