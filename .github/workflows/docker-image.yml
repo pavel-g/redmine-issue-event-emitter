@@ -35,5 +35,6 @@ jobs:
           echo GH_REGISTRY_USERNAME: ${GH_REGISTRY_USERNAME}
           echo IMAGE_NAME: ${IMAGE_NAME}
           echo ${GH_REGISTRY_TOKEN} | docker login ${REGISTRY} -u ${GH_REGISTRY_USERNAME} --password-stdin
-          docker build --push \
+          docker build \
             -t ${REGISTRY}/${GH_REGISTRY_USERNAME}/${IMAGE_NAME}:latest .
+          docker push ${REGISTRY}/${GH_REGISTRY_USERNAME}/${IMAGE_NAME}:latest
