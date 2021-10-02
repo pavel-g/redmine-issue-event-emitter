@@ -38,7 +38,9 @@ jobs:
           now=$(date --rfc-3339=seconds --utc)
           revision=${GITHUB_SHA:0:7}
           ref_name=${GITHUB_REF#refs/*/}
+          echo "Build image..."
           docker build \
             --build-arg CREATED="${now}" --build-arg REVISION=${revision}  --build-arg REF_NAME=${ref_name} \
             -t ${REGISTRY}/${IMAGE_NAME}:latest .
+          echo "Push image..."
           docker push ${REGISTRY}/${IMAGE_NAME}:latest:latest
