@@ -31,7 +31,7 @@ export class RedmineDataLoader {
     if (typeof this.urlPrefix !== 'string' || this.urlPrefix.length === 0) {
       throw 'REDMINE_URL_PREFIX is undefined';
     }
-    return `${this.urlPrefix}/issues/${issueNumber}.json?include=children,journals`;
+    return `${this.urlPrefix}/issues/${issueNumber}.json?include=children,journals,relations`;
   }
 
 }
