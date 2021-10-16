@@ -16,6 +16,10 @@ export class Queue<T, NT> {
     this.items.push(...values);
   }
 
+  isItemExists(value: T): boolean {
+    return this.items.indexOf(value) >= 0;
+  }
+
   start(): void {
     this.update();
   }

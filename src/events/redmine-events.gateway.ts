@@ -63,7 +63,11 @@ export class RedmineEventsGateway {
   }
 
   addIssues(issues: number[]): void {
-    this.issuesChangesQueue.add(issues);
+    issues.forEach(issue => {
+      if (!this.issuesChangesQueue.isItemExists(issue)) {
+        this.issuesChangesQueue.add([issue]);
+      }
+    });
   }
 
   private sendWebHookFullDataEvents(data: RedmineIssueData[]): void {
