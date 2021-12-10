@@ -5,6 +5,8 @@ import { MailListenerParams } from "./maillistener-params";
 import { CreateSubjectsParserByRegExp } from "../subjects-parser/subjects-parser";
 import { EventsListener } from "../events/events-listener";
 
+const UPDATE_INTERVAL_AFTER_ERROR = 5 * 60 * 1000;
+
 @Injectable()
 export class MailListener implements EventsListener {
 
@@ -28,7 +30,17 @@ export class MailListener implements EventsListener {
       console.error('Mail listener config not defined');
       return;
     }
-    const connection = await this.getConnection();
+
+    let connection;
+    try {
+      connection = await this.getConnection();
+    } catch (ex) {
+      console.error('Mail listener error on getConnection:', ex);
+      this.closeConnection();
+      this.repeatUpdate(UPDATE_INTERVAL_AFTER_ERROR);
+      return;
+    }
+
     const searchCriteria = [
       'UNSEEN'
     ];
@@ -37,8 +49,19 @@ export class MailListener implements EventsListener {
       markSeen: true
     };
     // const boxes = await connection.getBoxes();
-    await connection.openBox(this.config.boxName)
-    const messages = await connection.search(searchCriteria, fetchOptions)
+
+    let messages;
+
+    try {
+      await connection.openBox(this.config.boxName)
+      messages = await connection.search(searchCriteria, fetchOptions)
+    } catch (ex) {
+      console.error('Mail listener error on openBox and search:', ex);
+      this.closeConnection();
+      this.repeatUpdate(UPDATE_INTERVAL_AFTER_ERROR);
+      return;
+    }
+
     const subjects: string[] = messages.map(message => {
       return message.parts.filter(function (part) {
         return part.which === 'HEADER';
@@ -50,9 +73,8 @@ export class MailListener implements EventsListener {
       return subjectParser.getIssueNumber(subject);
     });
     this.issues.next(numbers);
-    this.updateTimeout = setTimeout(() => {
-      this.updateMessages();
-    }, this.config.updateInterval);
+
+    this.repeatUpdate(this.config.updateInterval);
   }
 
   private connection: ImapSimple.ImapSimple;
@@ -61,6 +83,24 @@ export class MailListener implements EventsListener {
       this.connection = await ImapSimple.connect(this.config.imapSimpleConfig as any);
     }
     return this.connection;
+  }
+
+  private repeatUpdate(interval: number): void {
+    this.updateTimeout = setTimeout(() => {
+      this.updateMessages().catch(reason => {
+        console.error('Mail listener unknown error:', reason);
+      });
+    }, interval);
+  }
+
+  private closeConnection(): void {
+    if (!this.connection) return;
+    try {
+      this.connection.closeBox(false);
+    } catch (e) {
+      console.error('Mail listener error at closeBox:', e);
+    }
+    this.connection = null;
   }
 
   // TODO: 2021-05-08 Добавить функцию получения списка папок на сервере
