@@ -1,11 +1,11 @@
-FROM node:lts-buster AS build
+FROM node:lts-bullseye AS build
 WORKDIR /build
 COPY package*.json ./
 RUN npm install
 COPY . .
 RUN npm run build
 
-FROM node:lts-buster AS prod
+FROM node:lts-bullseye AS prod
 
 ARG CREATED
 ARG REVISION=LOCAL
