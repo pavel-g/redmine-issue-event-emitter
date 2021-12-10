@@ -4,6 +4,7 @@ import { Injectable } from "@nestjs/common";
 import { MailListenerParams } from "./maillistener-params";
 import { CreateSubjectsParserByRegExp } from "../subjects-parser/subjects-parser";
 import { EventsListener } from "../events/events-listener";
+import {Message} from "imap-simple";
 
 const UPDATE_INTERVAL_AFTER_ERROR = 5 * 60 * 1000;
 
@@ -31,7 +32,7 @@ export class MailListener implements EventsListener {
       return;
     }
 
-    let connection;
+    let connection: ImapSimple.ImapSimple;
     try {
       connection = await this.getConnection();
     } catch (ex) {
@@ -50,7 +51,7 @@ export class MailListener implements EventsListener {
     };
     // const boxes = await connection.getBoxes();
 
-    let messages;
+    let messages: Message[];
 
     try {
       await connection.openBox(this.config.boxName)
